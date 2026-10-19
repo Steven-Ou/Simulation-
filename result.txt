@@ -1,0 +1,23 @@
+Steven Ou                                                            10/17/26
+
+Target: Find x such that Player A has a 50% win probability.
+Player B win probability on serve is fixed at 0.4.
+Simulations per trial: 10,000
+--------------------------------------------------------
+Trial  1: x = 0.50000 -> Win Rate: 0.84660 (8466 wins)
+Trial  2: x = 0.25000 -> Win Rate: 0.03750 (375 wins)
+Trial  3: x = 0.37500 -> Win Rate: 0.40840 (4084 wins)
+Trial  4: x = 0.43750 -> Win Rate: 0.67020 (6702 wins)
+Trial  5: x = 0.40625 -> Win Rate: 0.54420 (5442 wins)
+Trial  6: x = 0.39062 -> Win Rate: 0.47650 (4765 wins)
+Trial  7: x = 0.39844 -> Win Rate: 0.51800 (5180 wins)
+Trial  8: x = 0.39453 -> Win Rate: 0.48860 (4886 wins)
+Trial  9: x = 0.39648 -> Win Rate: 0.49950 (4995 wins)
+Trial 10: x = 0.39746 -> Win Rate: 0.50480 (5048 wins)
+Trial 11: x = 0.39697 -> Win Rate: 0.51090 (5109 wins)
+Trial 12: x = 0.39673 -> Win Rate: 0.50670 (5067 wins)
+Trial 13: x = 0.39661 -> Win Rate: 0.50120 (5012 wins)
+Trial 14: x = 0.39655 -> Win Rate: 0.50880 (5088 wins)
+Trial 15: x = 0.39651 -> Win Rate: 0.49920 (4992 wins)
+
+Final Answer: To make the game fair, x should be approximately 0.397.
