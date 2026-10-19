@@ -115,7 +115,7 @@ int main()
                 delayed_list.push({current_event.job_id, clock_time});
 
                 if (trace_count < 25)
-                {
+                {∑
                     cout << left << setw(12) << "Arrival" << setw(10) << current_event.job_id
                          << setw(15) << fixed << setprecision(4) << clock_time
                          << setw(18) << delayed_list.size() << setw(15) << server_status
