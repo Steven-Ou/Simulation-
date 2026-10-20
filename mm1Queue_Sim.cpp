@@ -3,31 +3,30 @@
 #include <queue>
 #include <vector>
 #include <iomanip>
+#include <cmath>
 
 using namespace std;
 
-// Define the two types of events
 enum EventType
 {
     ARRIVAL,
     DEPARTURE
 };
 
-// Structure for the Future Event List (FEL)
+// Future Event List Structure
 struct Event
 {
     double time;
     EventType type;
     int job_id;
 
-    // The priority queue in C++ needs this to sort events chronologically
     bool operator>(const Event &other) const
     {
         return time > other.time;
     }
 };
 
-// Structure for the Delayed List
+// Delayed List Structure
 struct Job
 {
     int id;
@@ -36,7 +35,6 @@ struct Job
 
 int main()
 {
-    // Parameters
     double lambda_rate = 0.8;
     double mu_rate = 1.0;
 
@@ -50,79 +48,95 @@ int main()
         return -log(u) / rate;
     };
 
-    // System Components
-    priority_queue<Event, vector<Event>, greater<Event>> fel; // The Future Event List
-    queue<Job> delayed_list;                                  // The explicit Delayed List
+    priority_queue<Event, vector<Event>, greater<Event>> fel;
+    queue<Job> delayed_list;
 
     double clock_time = 0.0;
     int server_status = 0; // 0 = idle, 1 = busy
 
-    // Statistics
+    // Statistics for Original Prompt
+    double sum_interarrival_time = 0.0;
+    double total_busy_time = 0.0;
+    int num_busy_periods = 0;
+    double current_busy_start = 0.0;
+
+    // Statistics for Feedback
     int jobs_created = 0;
     int jobs_completed = 0;
-    double total_delay = 0.0;   // Sum of all wait times in the delayed list
-    int jobs_delayed_count = 0; // Number of jobs that had a delay > 0
+    double total_delay = 0.0;
 
     int trace_count = 0;
 
-    // Schedule the very first event
+    // Schedule Job 1
     jobs_created++;
-    fel.push({exponential(lambda_rate), ARRIVAL, jobs_created});
+    double first_arrival = exponential(lambda_rate);
+    sum_interarrival_time += first_arrival;
+    fel.push({first_arrival, ARRIVAL, jobs_created});
 
-    cout << "--- Trace of First 25 Events ---" << endl;
-    cout << left << setw(12) << "Event" << setw(10) << "Job ID"
-         << setw(15) << "Clock Time" << setw(18) << "Delayed List Size"
-         << setw(15) << "Server Status" << setw(15) << "Job Delay" << endl;
+    cout << "--- Trace of First 25 Events ---\n"
+         << endl;
 
-    // Main Simulation Loop
     while (jobs_completed < 1000 || !fel.empty())
     {
         if (jobs_completed == 1000)
-            break; // Stop after 1000 departures
+            break;
 
-        // 1. Pull the next chronological event from the FEL
         Event current_event = fel.top();
         fel.pop();
-
-        // 2. Advance the simulation clock
         clock_time = current_event.time;
 
         if (current_event.type == ARRIVAL)
         {
-            // Schedule the next arrival immediately
-            jobs_created++;
-            fel.push({clock_time + exponential(lambda_rate), ARRIVAL, jobs_created});
+            if (trace_count < 25)
+            {
+                cout << "[" << fixed << setprecision(4) << clock_time << "] Event: ARRIVAL | Job ID: "
+                     << current_event.job_id << " | Server: " << server_status
+                     << " | Delayed List Size: " << delayed_list.size() << endl;
+            }
 
+            // 1. Generate and schedule the NEXT arrival on the FEL (Answers Professor's exact feedback)
+            jobs_created++;
+            double inter_time = exponential(lambda_rate);
+            sum_interarrival_time += inter_time;
+            double next_arrival_time = clock_time + inter_time;
+            fel.push({next_arrival_time, ARRIVAL, jobs_created});
+
+            if (trace_count < 25)
+            {
+                cout << "   -> FEL ACTION: Scheduled Future ARRIVAL for Job " << jobs_created
+                     << " at time " << next_arrival_time << endl;
+            }
+
+            // 2. Process current job
             if (server_status == 0)
             {
-                // Server is idle. Job goes straight to server (Delay = 0)
                 server_status = 1;
+                current_busy_start = clock_time; // Start tracking busy period
+
                 double service_time = exponential(mu_rate);
-                fel.push({clock_time + service_time, DEPARTURE, current_event.job_id});
+                double departure_time = clock_time + service_time;
+                fel.push({departure_time, DEPARTURE, current_event.job_id});
 
                 if (trace_count < 25)
                 {
-                    cout << left << setw(12) << "Arrival" << setw(10) << current_event.job_id
-                         << setw(15) << fixed << setprecision(4) << clock_time
-                         << setw(18) << delayed_list.size() << setw(15) << server_status
-                         << setw(15) << "0.0000" << endl;
-                    trace_count++;
+                    cout << "   -> FEL ACTION: Server idle. Job " << current_event.job_id
+                         << " enters service. Scheduled DEPARTURE at time " << departure_time << endl;
                 }
             }
             else
             {
-                // Server is busy. Add job to the explicit delayed list
                 delayed_list.push({current_event.job_id, clock_time});
 
                 if (trace_count < 25)
-                {∑
-                    cout << left << setw(12) << "Arrival" << setw(10) << current_event.job_id
-                         << setw(15) << fixed << setprecision(4) << clock_time
-                         << setw(18) << delayed_list.size() << setw(15) << server_status
-                         << setw(15) << "-" << endl; // Delay not known yet
-                    trace_count++;
+                {
+                    cout << "   -> DELAY ACTION: Server busy. Job " << current_event.job_id
+                         << " added to delayed list." << endl;
                 }
             }
+
+            if (trace_count < 25)
+                cout << "--------------------------------------------------------" << endl;
+            trace_count++;
         }
         else if (current_event.type == DEPARTURE)
         {
@@ -130,54 +144,63 @@ int main()
 
             if (trace_count < 25)
             {
-                cout << left << setw(12) << "Departure" << setw(10) << current_event.job_id
-                     << setw(15) << fixed << setprecision(4) << clock_time
-                     << setw(18) << delayed_list.size() << setw(15) << server_status
-                     << setw(15) << "-" << endl;
-                trace_count++;
+                cout << "[" << fixed << setprecision(4) << clock_time << "] Event: DEPARTURE | Job ID: "
+                     << current_event.job_id << " | Server: " << server_status
+                     << " | Delayed List Size: " << delayed_list.size() << endl;
             }
 
             if (!delayed_list.empty())
             {
-                // A job is waiting. Pull it from the delayed list and start service.
                 Job next_job = delayed_list.front();
                 delayed_list.pop();
 
-                // Calculate exactly how long this specific job was delayed
-                double delay_for_this_job = clock_time - next_job.arrival_time;
-                total_delay += delay_for_this_job;
-                jobs_delayed_count++;
+                total_delay += (clock_time - next_job.arrival_time); // Calculate individual delay
 
-                // Schedule its departure
                 double service_time = exponential(mu_rate);
-                fel.push({clock_time + service_time, DEPARTURE, next_job.id});
+                double departure_time = clock_time + service_time;
+                fel.push({departure_time, DEPARTURE, next_job.id});
 
                 if (trace_count < 25)
                 {
-                    cout << left << setw(12) << "-> Service" << setw(10) << next_job.id
-                         << setw(15) << fixed << setprecision(4) << clock_time
-                         << setw(18) << delayed_list.size() << setw(15) << server_status
-                         << setw(15) << delay_for_this_job << endl;
-                    trace_count++;
+                    cout << "   -> FEL ACTION: Pulled Job " << next_job.id
+                         << " from delayed list. Scheduled DEPARTURE at time " << departure_time << endl;
                 }
             }
             else
             {
-                // Nobody is waiting. Server becomes idle.
                 server_status = 0;
+                // End the busy period
+                total_busy_time += (clock_time - current_busy_start);
+                num_busy_periods++;
+
+                if (trace_count < 25)
+                {
+                    cout << "   -> QUEUE ACTION: Delayed list empty. Server becomes idle." << endl;
+                }
             }
+
+            if (trace_count < 25)
+                cout << "--------------------------------------------------------" << endl;
+            trace_count++;
         }
     }
 
-    // Averages and Metrics
-    double avg_delay_all_jobs = total_delay / jobs_completed;
-    double avg_delay_delayed_jobs = total_delay / jobs_delayed_count;
+    // Close out final busy period if simulation ends while server is active
+    if (server_status == 1)
+    {
+        total_busy_time += (clock_time - current_busy_start);
+        num_busy_periods++;
+    }
 
-    cout << "\n--- Simulation Results ---" << endl;
-    cout << "Total Jobs Completed: " << jobs_completed << endl;
-    cout << "Average Delay for ALL Jobs: " << fixed << setprecision(4) << avg_delay_all_jobs
-         << " (Theoretical Expected: 3.2000)" << endl;
-    cout << "Average Delay for DELAYED Jobs: " << avg_delay_delayed_jobs << endl;
+    double avg_interarrival = sum_interarrival_time / jobs_created;
+    double avg_busy_period = total_busy_time / num_busy_periods;
+    double avg_delay = total_delay / jobs_completed;
+
+    cout << "\n--- Final Simulation Results ---" << endl;
+    cout << "Total Customers Departed: " << jobs_completed << endl;
+    cout << "Avg Interarrival Time:    " << fixed << setprecision(4) << avg_interarrival << " (Expected: 1.2500)" << endl;
+    cout << "Avg Busy Period:          " << avg_busy_period << " (Expected: 5.0000)" << endl;
+    cout << "Avg Delay in Queue:       " << avg_delay << " (Expected: 4.0000)" << endl;
 
     return 0;
 }
